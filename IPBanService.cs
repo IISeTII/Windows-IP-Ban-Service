@@ -258,6 +258,8 @@ popd
 
         private void ProcessIPAddress(string ipAddress, XmlDocument doc)
         {
+            Log.Write(LogLevel.Info, "Processing ip: {0}", ipAddress);
+
             if (string.IsNullOrWhiteSpace(ipAddress))
             {
                 return;
