@@ -7,7 +7,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
 
 #endregion Imports
@@ -27,6 +26,7 @@ namespace IPBan
         private TimeSpan cycleTime = TimeSpan.FromMinutes(1.0d);
         private string ruleName = "BlockIPAddresses";
         private readonly HashSet<string> whiteList = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> whiteListReason = new HashSet<string>();
         private Regex whiteListRegex;
         private readonly HashSet<string> blackList = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private Regex blackListRegex;
@@ -115,7 +115,7 @@ namespace IPBan
 
             value = ConfigurationManager.AppSettings["ExpireTime"];
             expireTime = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
-            
+
             value = ConfigurationManager.AppSettings["CycleTime"];
             cycleTime = TimeSpan.Parse(value, CultureInfo.InvariantCulture);
 
@@ -126,6 +126,8 @@ namespace IPBan
             PopulateList(blackList, ref blackListRegex, ConfigurationManager.AppSettings["Blacklist"], ConfigurationManager.AppSettings["BlacklistRegex"]);
             Regex ignored = null;
             PopulateList(allowedUserNames, ref ignored, ConfigurationManager.AppSettings["AllowedUserNames"], null);
+            ignored = null;
+            PopulateList(whiteListReason, ref ignored, ConfigurationManager.AppSettings["WhitelistReason"], null);
             expressions = (ExpressionsToBlock)System.Configuration.ConfigurationManager.GetSection("ExpressionsToBlock");
 
             foreach (ExpressionsToBlockGroup group in expressions.Groups)
@@ -148,6 +150,11 @@ namespace IPBan
             IPAddress ip;
 
             return (whiteList.Contains(ipAddress) || !IPAddress.TryParse(ipAddress, out ip) || (whiteListRegex != null && whiteListRegex.IsMatch(ipAddress)));
+        }
+
+        internal string ReasonIsWhiteListed(string outerXml)
+        {
+            return whiteListReason.FirstOrDefault(x => outerXml.Contains(x));
         }
 
         /// <summary>
@@ -189,7 +196,7 @@ namespace IPBan
         /// The duration after the last failed login attempt that the count is reset back to 0.
         /// </summary>
         public TimeSpan ExpireTime { get { return expireTime; } }
-        
+
         /// <summary>
         /// Interval of time to do house-keeping chores like un-banning ip addresses
         /// </summary>
@@ -224,6 +231,8 @@ namespace IPBan
         /// White list of ips as a comma separated string
         /// </summary>
         public string WhiteList { get { return string.Join(",", whiteList); } }
+
+        public string WhitelistReason { get { return string.Join(",", whiteListReason); } }
 
         /// <summary>
         /// White list regex
