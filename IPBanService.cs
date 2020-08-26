@@ -258,6 +258,8 @@ popd
 
         private void ProcessIPAddress(string ipAddress, XmlDocument doc)
         {
+            Log.Write(LogLevel.Info, "Processing ip: {0}", ipAddress);
+
             if (string.IsNullOrWhiteSpace(ipAddress))
             {
                 return;
@@ -276,47 +278,55 @@ popd
             }
             else
             {
-                lock (ipBlocker)
+                string whiteListReason = config.ReasonIsWhiteListed(doc.OuterXml);
+                if (!string.IsNullOrEmpty(whiteListReason))
                 {
-                    // Get the IPBlockCount, if one exists.
-                    IPBlockCount ipBlockCount;
-                    ipBlocker.TryGetValue(ipAddress, out ipBlockCount);
-                    if (ipBlockCount == null)
+                    Log.Write(LogLevel.Info, "Ignoring whitelisted Reason {0}, user name: {1}", whiteListReason, userName);
+                }
+                else
+                {
+                    lock (ipBlocker)
                     {
-                        // This is the first failed login attempt, so record a new IPBlockCount.
-                        ipBlockCount = new IPBlockCount();
-                        ipBlocker[ipAddress] = ipBlockCount;
-                    }
-
-                    // Increment the count.
-                    ipBlockCount.IncrementCount();
-
-                    Log.Write(LogLevel.Info, "Incrementing count for ip {0} to {1}, user name: {2}", ipAddress, ipBlockCount.Count, userName);
-
-                    // check for the target user name for additional blacklisting checks                    
-                    bool blackListed = config.IsBlackListed(ipAddress) || (userName != null && config.IsBlackListed(userName));
-
-                    // if the ip is black listed or they have reached the maximum failed login attempts before ban, ban them
-                    if (blackListed || ipBlockCount.Count == config.FailedLoginAttemptsBeforeBan)
-                    {
-                        // if they are not black listed OR this is the first increment of a black listed ip address, perform the ban
-                        if (!blackListed || ipBlockCount.Count == 1)
+                        // Get the IPBlockCount, if one exists.
+                        IPBlockCount ipBlockCount;
+                        ipBlocker.TryGetValue(ipAddress, out ipBlockCount);
+                        if (ipBlockCount == null)
                         {
-                            Log.Write(LogLevel.Error, "Banning ip address: {0}, user name: {1}, black listed: {2}, count: {3}", ipAddress, userName, blackListed, ipBlockCount.Count);
-                            ipBlockerDate[ipAddress] = DateTime.UtcNow;
-                            ExecuteBanScript();
+                            // This is the first failed login attempt, so record a new IPBlockCount.
+                            ipBlockCount = new IPBlockCount();
+                            ipBlocker[ipAddress] = ipBlockCount;
                         }
-                        else
-                        {
-                            Log.Write(LogLevel.Info, "Ignoring previously banned black listed ip {0}, user name: {1}, ip should already be banned", ipAddress, userName);
-                        }
-                    }
-                    else if (ipBlockCount.Count > config.FailedLoginAttemptsBeforeBan)
-                    {
-                        Log.Write(LogLevel.Info, "Got event with ip address {0}, count {1}, ip should already banned", ipAddress, ipBlockCount.Count);
-                    }
 
-                    LogInitialConfig();
+                        // Increment the count.
+                        ipBlockCount.IncrementCount();
+
+                        Log.Write(LogLevel.Info, "Incrementing count for ip {0} to {1}, user name: {2}", ipAddress, ipBlockCount.Count, userName);
+
+                        // check for the target user name for additional blacklisting checks                    
+                        bool blackListed = config.IsBlackListed(ipAddress) || (userName != null && config.IsBlackListed(userName));
+
+                        // if the ip is black listed or they have reached the maximum failed login attempts before ban, ban them
+                        if (blackListed || ipBlockCount.Count == config.FailedLoginAttemptsBeforeBan)
+                        {
+                            // if they are not black listed OR this is the first increment of a black listed ip address, perform the ban
+                            if (!blackListed || ipBlockCount.Count == 1)
+                            {
+                                Log.Write(LogLevel.Error, "Banning ip address: {0}, user name: {1}, black listed: {2}, count: {3}", ipAddress, userName, blackListed, ipBlockCount.Count);
+                                ipBlockerDate[ipAddress] = DateTime.UtcNow;
+                                ExecuteBanScript();
+                            }
+                            else
+                            {
+                                Log.Write(LogLevel.Info, "Ignoring previously banned black listed ip {0}, user name: {1}, ip should already be banned", ipAddress, userName);
+                            }
+                        }
+                        else if (ipBlockCount.Count > config.FailedLoginAttemptsBeforeBan)
+                        {
+                            Log.Write(LogLevel.Info, "Got event with ip address {0}, count {1}, ip should already banned", ipAddress, ipBlockCount.Count);
+                        }
+
+                        LogInitialConfig();
+                    }
                 }
             }
         }
