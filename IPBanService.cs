@@ -92,6 +92,7 @@ popd
         {
             Log.Write(LogLevel.Info, "Whitelist: {0}, Whitelist Regex: {1}", config.WhiteList, config.WhiteListRegex);
             Log.Write(LogLevel.Info, "Blacklist: {0}, Blacklist Regex: {1}", config.BlackList, config.BlackListRegex);
+            Log.Write(LogLevel.Info, "WhitelistReasons: {0}", config.WhitelistReason);
 
             if (!string.IsNullOrWhiteSpace(config.AllowedUserNames))
             {
